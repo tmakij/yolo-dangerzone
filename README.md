@@ -1,4 +1,4 @@
-yolo-dangerzone
+Johdatus tekoälyyn
 ===============
 
-Johdatus tekoälyyn tehtävät
+Johdatus tekoälyyn tehtävät.
