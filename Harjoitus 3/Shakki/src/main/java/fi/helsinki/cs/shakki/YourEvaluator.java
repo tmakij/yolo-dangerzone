@@ -1,9 +1,12 @@
 package fi.helsinki.cs.shakki;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Random;
 import position.Evaluator;
 import position.Position;
 
@@ -11,6 +14,8 @@ import position.Position;
  * @author Timo Mäki
  */
 public final class YourEvaluator extends Evaluator {
+
+    private final Random rand = new Random();
 
     /*
      * Minä (Valkoiset) vastaan he (mustat).
@@ -31,55 +36,62 @@ public final class YourEvaluator extends Evaluator {
     }
 
     private static double isGood(final int position, final int x, final int y, final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops) {
+        boolean myUnit = false;
         if (position >= Position.WKing && position <= Position.WPawn) {
+            myUnit = true;
             myTroops.put(new Coordinate(x, y), position);
         } else if (position >= Position.BKing && position <= Position.BPawn) {
             enemyTroops.put(new Coordinate(x, y), position);
         }
-        switch (position) {
+        final double res = getWeightOfUnit(position);
+        return myUnit ? res : -res;
+    }
+
+    private static double getWeightOfUnit(final int unit) {
+        switch (unit) {
+            case Position.BKing:
             case Position.WKing:
                 return 1000D;
+            case Position.BQueen:
             case Position.WQueen:
-                return 100D;
+                return 450D;
+            case Position.BRook:
             case Position.WRook:
-                return 10D;
+                return 25D;
+            case Position.BBishop:
             case Position.WBishop:
-                return 10D;
+                return 12.5D;
+            case Position.BKnight:
             case Position.WKnight:
-                return 10D;
+                return 12.5D;
+            case Position.BPawn:
             case Position.WPawn:
                 return 5D;
-            case Position.BKing:
-                return -1000D;
-            case Position.BQueen:
-                return -100D;
-            case Position.BRook:
-                return -10D;
-            case Position.BBishop:
-                return -10D;
-            case Position.BKnight:
-                return -10D;
-            case Position.BPawn:
-                return -5D;
             default:
                 return 0.0D;
         }
     }
 
-    private static double UnitsCanBeEaten(final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops) {
-        double troopLosses = 0D;
+    private double UnitsCanBeEaten(final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops) {
+        final ArrayList<Double> losses = new ArrayList<Double>();
+        losses.add(0.0D);
         for (final Map.Entry<Coordinate, Integer> kvp : enemyTroops.entrySet()) {
-            final Collection<Coordinate> threatened = getAttackingCoordinates(kvp.getValue(), kvp.getKey().x, kvp.getKey().y);
+            final Collection<Coordinate> threatened = getAttackingCoordinates(kvp.getValue(), kvp.getKey().x, kvp.getKey().y, myTroops, enemyTroops);
             for (final Map.Entry<Coordinate, Integer> myKvp : myTroops.entrySet()) {
                 if (threatened.contains(myKvp.getKey())) {
-                    troopLosses -= 25D;
+                    if (myKvp.getValue() == Position.WPawn && rand.nextDouble() > 0.75D) {
+                        losses.add(-100D);//Random feeding
+                    } else {
+                        losses.add(getWeightOfUnit(myKvp.getValue()));
+                    }
                 }
             }
         }
-        return troopLosses;
+        Collections.sort(losses);
+        return -losses.get(losses.size() - 1);
     }
 
-    private static Collection<Coordinate> getAttackingCoordinates(final int unit, final int x, final int y) {
+    private static Collection<Coordinate> getAttackingCoordinates(final int unit, final int x, final int y, final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops) {
         final Collection<Coordinate> dirs = new HashSet<Coordinate>();
         switch (unit) {
             case Position.BKing:
@@ -108,8 +120,38 @@ public final class YourEvaluator extends Evaluator {
                 dirs.add(new Coordinate(x + 1, y + 1));
                 dirs.add(new Coordinate(x - 1, y + 1));
                 break;
+            case Position.BQueen:
+                dirs.addAll(attacksToDir(x, y, 1, true, myTroops, enemyTroops));
+                dirs.addAll(attacksToDir(x, y, -1, true, myTroops, enemyTroops));
+                dirs.addAll(attacksToDir(x, y, 1, false, myTroops, enemyTroops));
+                dirs.addAll(attacksToDir(x, y, -1, false, myTroops, enemyTroops));
+                break;
+            case Position.BRook:
+                dirs.addAll(attacksToDir(x, y, 1, true, myTroops, enemyTroops));
+                dirs.addAll(attacksToDir(x, y, -1, true, myTroops, enemyTroops));
+                dirs.addAll(attacksToDir(x, y, 1, false, myTroops, enemyTroops));
+                dirs.addAll(attacksToDir(x, y, -1, false, myTroops, enemyTroops));
+                break;
+            case Position.BBishop:
+                break;
             default:
                 break;
+        }
+        return dirs;
+    }
+
+    private static Collection<Coordinate> attacksToDir(int x, int y, int m, boolean xAxis, final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops) {
+        final Collection<Coordinate> dirs = new HashSet<Coordinate>();
+        int add = 1;
+        int yM = xAxis ? 0 : 1;
+        int xM = xAxis ? 1 : 0;
+        while (true) {
+            final Coordinate newC = new Coordinate(m * (x + add) * xM, yM * (y + add) * m);
+            if (myTroops.containsKey(newC) || enemyTroops.containsKey(newC) || x + add > Position.bRows || x - add < 0 || y + add > Position.bCols || y - add < 0) {
+                break;
+            }
+            dirs.add(newC);
+            add++;
         }
         return dirs;
     }
