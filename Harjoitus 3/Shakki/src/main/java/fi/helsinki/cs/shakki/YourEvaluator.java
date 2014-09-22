@@ -6,7 +6,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Random;
 import position.Evaluator;
 import position.Position;
 
@@ -15,7 +14,8 @@ import position.Position;
  */
 public final class YourEvaluator extends Evaluator {
 
-    private final Random rand = new Random();
+    private static final int X_AXIS = 1;
+    private static final int Y_AXIS = 2;
 
     /*
      * Minä (Valkoiset) vastaan he (mustat).
@@ -31,7 +31,7 @@ public final class YourEvaluator extends Evaluator {
                 ret += isGood(boardX[y], x, y, myTroops, enemyTroops);
             }
         }
-        ret += UnitsCanBeEaten(myTroops, enemyTroops);
+        ret += unitsCanBeEaten(myTroops, enemyTroops);
         return ret;
     }
 
@@ -42,6 +42,8 @@ public final class YourEvaluator extends Evaluator {
             myTroops.put(new Coordinate(x, y), position);
         } else if (position >= Position.BKing && position <= Position.BPawn) {
             enemyTroops.put(new Coordinate(x, y), position);
+        } else {
+            return 0D;
         }
         final double res = getWeightOfUnit(position);
         return myUnit ? res : -res;
@@ -72,27 +74,23 @@ public final class YourEvaluator extends Evaluator {
         }
     }
 
-    private double UnitsCanBeEaten(final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops) {
+    private double unitsCanBeEaten(final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops) {
         final ArrayList<Double> losses = new ArrayList<Double>();
         losses.add(0.0D);
+        final Collection<Coordinate> threatened = new HashSet<Coordinate>();
         for (final Map.Entry<Coordinate, Integer> kvp : enemyTroops.entrySet()) {
-            final Collection<Coordinate> threatened = getAttackingCoordinates(kvp.getValue(), kvp.getKey().x, kvp.getKey().y, myTroops, enemyTroops);
-            for (final Map.Entry<Coordinate, Integer> myKvp : myTroops.entrySet()) {
-                if (threatened.contains(myKvp.getKey())) {
-                    if (myKvp.getValue() == Position.WPawn && rand.nextDouble() > 0.75D) {
-                        losses.add(-100D);//Random feeding
-                    } else {
-                        losses.add(getWeightOfUnit(myKvp.getValue()));
-                    }
-                }
+            getAttackingCoordinates(kvp.getValue(), kvp.getKey().x, kvp.getKey().y, myTroops, enemyTroops, threatened);
+        }
+        for (final Map.Entry<Coordinate, Integer> myKvp : myTroops.entrySet()) {
+            if (threatened.contains(myKvp.getKey())) {
+                losses.add(getWeightOfUnit(myKvp.getValue()));
             }
         }
         Collections.sort(losses);
         return -losses.get(losses.size() - 1);
     }
 
-    private static Collection<Coordinate> getAttackingCoordinates(final int unit, final int x, final int y, final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops) {
-        final Collection<Coordinate> dirs = new HashSet<Coordinate>();
+    private static void getAttackingCoordinates(final int unit, final int x, final int y, final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops, final Collection<Coordinate> dirs) {
         switch (unit) {
             case Position.BKing:
                 dirs.add(new Coordinate(x, y + 1));
@@ -121,32 +119,39 @@ public final class YourEvaluator extends Evaluator {
                 dirs.add(new Coordinate(x - 1, y + 1));
                 break;
             case Position.BQueen:
-                dirs.addAll(attacksToDir(x, y, 1, true, myTroops, enemyTroops));
-                dirs.addAll(attacksToDir(x, y, -1, true, myTroops, enemyTroops));
-                dirs.addAll(attacksToDir(x, y, 1, false, myTroops, enemyTroops));
-                dirs.addAll(attacksToDir(x, y, -1, false, myTroops, enemyTroops));
+                addRook(x, y, dirs, myTroops, enemyTroops);
+                addBishop(x, y, dirs, myTroops, enemyTroops);
                 break;
             case Position.BRook:
-                dirs.addAll(attacksToDir(x, y, 1, true, myTroops, enemyTroops));
-                dirs.addAll(attacksToDir(x, y, -1, true, myTroops, enemyTroops));
-                dirs.addAll(attacksToDir(x, y, 1, false, myTroops, enemyTroops));
-                dirs.addAll(attacksToDir(x, y, -1, false, myTroops, enemyTroops));
+                addRook(x, y, dirs, myTroops, enemyTroops);
                 break;
             case Position.BBishop:
-                break;
-            default:
+                addBishop(x, y, dirs, myTroops, enemyTroops);
                 break;
         }
-        return dirs;
     }
 
-    private static Collection<Coordinate> attacksToDir(int x, int y, int m, boolean xAxis, final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops) {
+    private static void addRook(final int x, final int y, final Collection<Coordinate> dirs, final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops) {
+        dirs.addAll(attacksToDir(x, y, 1, 0, X_AXIS, myTroops, enemyTroops));
+        dirs.addAll(attacksToDir(x, y, -1, 0, X_AXIS, myTroops, enemyTroops));
+        dirs.addAll(attacksToDir(x, y, 0, 1, Y_AXIS, myTroops, enemyTroops));
+        dirs.addAll(attacksToDir(x, y, 0, -1, Y_AXIS, myTroops, enemyTroops));
+    }
+
+    private static void addBishop(final int x, final int y, final Collection<Coordinate> dirs, final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops) {
+        dirs.addAll(attacksToDir(x, y, 1, -1, X_AXIS | Y_AXIS, myTroops, enemyTroops));
+        dirs.addAll(attacksToDir(x, y, -1, 1, X_AXIS | Y_AXIS, myTroops, enemyTroops));
+        dirs.addAll(attacksToDir(x, y, 1, 1, Y_AXIS | Y_AXIS, myTroops, enemyTroops));
+        dirs.addAll(attacksToDir(x, y, -1, -1, Y_AXIS | Y_AXIS, myTroops, enemyTroops));
+    }
+
+    private static Collection<Coordinate> attacksToDir(final int x, final int y, final int xDir, final int yDir, final int axis, final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops) {
         final Collection<Coordinate> dirs = new HashSet<Coordinate>();
         int add = 1;
-        int yM = xAxis ? 0 : 1;
-        int xM = xAxis ? 1 : 0;
+        int yM = (axis & Y_AXIS) == Y_AXIS ? 1 : 0;
+        int xM = (axis & X_AXIS) == X_AXIS ? 1 : 0;
         while (true) {
-            final Coordinate newC = new Coordinate(m * (x + add) * xM, yM * (y + add) * m);
+            final Coordinate newC = new Coordinate(xDir * (x + add) * xM, yM * (y + add) * yDir);
             if (myTroops.containsKey(newC) || enemyTroops.containsKey(newC) || x + add > Position.bRows || x - add < 0 || y + add > Position.bCols || y - add < 0) {
                 break;
             }
@@ -160,7 +165,7 @@ public final class YourEvaluator extends Evaluator {
 
         private final int x, y;
 
-        public Coordinate(int x, int y) {
+        private Coordinate(final int x, final int y) {
             this.x = x;
             this.y = y;
         }
