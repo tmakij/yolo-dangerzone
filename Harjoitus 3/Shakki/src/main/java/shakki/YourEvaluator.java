@@ -17,16 +17,12 @@ public final class YourEvaluator extends Evaluator {
     private static final int X_AXIS = 1;
     private static final int Y_AXIS = 2;
 
-    private static boolean sideSet, isWhite;
+    private static boolean isWhite;
 
     @Override
     public double eval(final Position p) {
         double ret = 0D;
-        if (!sideSet) {
-            isWhite = p.whiteToMove;
-            sideSet = true;
-        }
-        final boolean whiteTurn = isWhite;
+        isWhite = p.whiteToMove;
         final Map<Coordinate, Integer> whiteTroops = new HashMap<Coordinate, Integer>();
         final Map<Coordinate, Integer> blackTroops = new HashMap<Coordinate, Integer>();
         for (int x = 0; x < p.board.length; ++x) {
@@ -35,7 +31,7 @@ public final class YourEvaluator extends Evaluator {
                 ret += isGood(boardX[y], x, y, whiteTroops, blackTroops);
             }
         }
-        ret += unitsCanBeEaten(whiteTurn ? whiteTroops : blackTroops, whiteTurn ? blackTroops : whiteTroops);
+        ret += unitsCanBeEaten(isWhite ? whiteTroops : blackTroops, isWhite ? blackTroops : whiteTroops);
         return -ret;
     }
 
