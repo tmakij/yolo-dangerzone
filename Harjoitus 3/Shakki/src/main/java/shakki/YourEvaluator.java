@@ -1,11 +1,11 @@
 package shakki;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.PriorityQueue;
 import position.Evaluator;
 import position.Position;
 
@@ -33,7 +33,7 @@ public final class YourEvaluator extends Evaluator {
             }
         }
         ret += unitsCanBeEaten(whiteTurn ? whiteTroops : blackTroops, whiteTurn ? blackTroops : whiteTroops);
-        return ret;
+        return -ret;
     }
 
     private static double isGood(final int position, final int x, final int y, final Map<Coordinate, Integer> whiteTroops, final Map<Coordinate, Integer> blackTroops) {
@@ -76,7 +76,7 @@ public final class YourEvaluator extends Evaluator {
     }
 
     private double unitsCanBeEaten(final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops) {
-        final ArrayList<Double> losses = new ArrayList<Double>();
+        final PriorityQueue<Double> losses = new PriorityQueue<Double>(new DoubleComparer());
         losses.add(0.0D);
         final Collection<Coordinate> threatened = new HashSet<Coordinate>();
         for (final Map.Entry<Coordinate, Integer> kvp : enemyTroops.entrySet()) {
@@ -84,11 +84,10 @@ public final class YourEvaluator extends Evaluator {
         }
         for (final Map.Entry<Coordinate, Integer> myKvp : myTroops.entrySet()) {
             if (threatened.contains(myKvp.getKey())) {
-                losses.add(getWeightOfUnit(myKvp.getValue()));
+                losses.add(getWeightOfUnit(myKvp.getValue() - 1));
             }
         }
-        Collections.sort(losses);
-        return -losses.get(losses.size() - 1);
+        return -losses.poll();
     }
 
     private static void getAttackingCoordinates(final int unit, final int x, final int y, final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops, final Collection<Coordinate> dirs) {
@@ -183,6 +182,18 @@ public final class YourEvaluator extends Evaluator {
             add++;
         }
         return dirs;
+    }
+
+    private static final class DoubleComparer implements Comparator<Double> {
+
+        public int compare(final Double o1, final Double o2) {
+            if (o1 > o2) {
+                return -1;
+            } else if (o1 < 02) {
+                return 1;
+            }
+            return 0;
+        }
     }
 
     private static final class Coordinate {
