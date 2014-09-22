@@ -14,7 +14,7 @@ public final class YourEvaluator extends Evaluator {
     private static final int X_AXIS = 1;
     private static final int Y_AXIS = 2;
 
-    private boolean sideSet, isWhite;
+    private static boolean sideSet, isWhite;
 
     @Override
     public double eval(final Position p) {
@@ -29,14 +29,14 @@ public final class YourEvaluator extends Evaluator {
         for (int x = 0; x < p.board.length; ++x) {
             final int[] boardX = p.board[x];
             for (int y = 0; y < boardX.length; ++y) {
-                ret += isGood(boardX[y], x, y, whiteTroops, blackTroops, whiteTurn);
+                ret += isGood(boardX[y], x, y, whiteTroops, blackTroops);
             }
         }
         ret += unitsCanBeEaten(whiteTurn ? whiteTroops : blackTroops, whiteTurn ? blackTroops : whiteTroops);
         return ret;
     }
 
-    private static double isGood(final int position, final int x, final int y, final Map<Coordinate, Integer> whiteTroops, final Map<Coordinate, Integer> blackTroops, final boolean isWhite) {
+    private static double isGood(final int position, final int x, final int y, final Map<Coordinate, Integer> whiteTroops, final Map<Coordinate, Integer> blackTroops) {
         boolean whiteUnit = false;
         if (position >= Position.WKing && position <= Position.WPawn) {
             whiteUnit = true;
@@ -122,8 +122,13 @@ public final class YourEvaluator extends Evaluator {
     }
 
     private static void addPawn(final int x, final int y, final Collection<Coordinate> dirs, final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops) {
-        dirs.add(new Coordinate(x + 1, y + 1));
-        dirs.add(new Coordinate(x - 1, y + 1));
+        if (isWhite) {
+            dirs.add(new Coordinate(x + 1, y + 1));
+            dirs.add(new Coordinate(x - 1, y + 1));
+        } else {
+            dirs.add(new Coordinate(x + 1, y - 1));
+            dirs.add(new Coordinate(x - 1, y - 1));
+        }
     }
 
     private static void addKnight(final int x, final int y, final Collection<Coordinate> dirs, final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops) {
