@@ -3,7 +3,9 @@ package position;
 import java.util.Vector;
 
 /**
- * On muuten järkyttävää koodia. Tästä ei kannata katsoa mallia yhtään mihinkään.
+ * On muuten järkyttävää koodia. Tästä ei kannata katsoa mallia yhtään
+ * mihinkään.
+ *
  * @author en minä
  */
 public class Position {
@@ -36,9 +38,31 @@ public class Position {
     public final int Kx[] = {1, 1, 1, 0, 0, -1, -1, -1};
     public final int Ky[] = {1, 0, -1, 1, -1, 1, 0, -1};
 
+    private final int id;
+    private static int ids;
+
     public Position() {
         this.board = new int[bCols][bRows];
         this.whiteToMove = true;
+        ids++;
+        id = ids;
+    }
+
+    @Override
+    public int hashCode() {
+        return this.id;
+    }
+
+    @Override
+    public boolean equals(final Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (Position.class != obj.getClass()) {
+            return false;
+        }
+        final Position other = (Position) obj;
+        return this.id == other.id;
     }
 
     public void setStartingPosition() {

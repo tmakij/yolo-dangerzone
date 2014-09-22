@@ -14,33 +14,40 @@ public final class YourEvaluator extends Evaluator {
     private static final int X_AXIS = 1;
     private static final int Y_AXIS = 2;
 
+    private boolean sideSet, isWhite;
+
     @Override
     public double eval(final Position p) {
-        double ret = 0;
-        final Map<Coordinate, Integer> myTroops = new HashMap<Coordinate, Integer>();
-        final Map<Coordinate, Integer> enemyTroops = new HashMap<Coordinate, Integer>();
+        double ret = 0D;
+        if (!sideSet) {
+            isWhite = p.whiteToMove;
+            sideSet = true;
+        }
+        final boolean whiteTurn = isWhite;
+        final Map<Coordinate, Integer> whiteTroops = new HashMap<Coordinate, Integer>();
+        final Map<Coordinate, Integer> blackTroops = new HashMap<Coordinate, Integer>();
         for (int x = 0; x < p.board.length; ++x) {
             final int[] boardX = p.board[x];
             for (int y = 0; y < boardX.length; ++y) {
-                ret += isGood(boardX[y], x, y, myTroops, enemyTroops);
+                ret += isGood(boardX[y], x, y, whiteTroops, blackTroops, whiteTurn);
             }
         }
-        ret += unitsCanBeEaten(myTroops, enemyTroops);
+        ret += unitsCanBeEaten(whiteTurn ? whiteTroops : blackTroops, whiteTurn ? blackTroops : whiteTroops);
         return ret;
     }
 
-    private static double isGood(final int position, final int x, final int y, final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops) {
-        boolean myUnit = false;
+    private static double isGood(final int position, final int x, final int y, final Map<Coordinate, Integer> whiteTroops, final Map<Coordinate, Integer> blackTroops, final boolean isWhite) {
+        boolean whiteUnit = false;
         if (position >= Position.WKing && position <= Position.WPawn) {
-            myUnit = true;
-            myTroops.put(new Coordinate(x, y), position);
+            whiteUnit = true;
+            whiteTroops.put(new Coordinate(x, y), position);
         } else if (position >= Position.BKing && position <= Position.BPawn) {
-            enemyTroops.put(new Coordinate(x, y), position);
+            blackTroops.put(new Coordinate(x, y), position);
         } else {
             return 0D;
         }
         final double res = getWeightOfUnit(position);
-        return myUnit ? res : -res;
+        return whiteUnit == isWhite ? res : -res;
     }
 
     private static double getWeightOfUnit(final int unit) {
@@ -87,42 +94,60 @@ public final class YourEvaluator extends Evaluator {
     private static void getAttackingCoordinates(final int unit, final int x, final int y, final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops, final Collection<Coordinate> dirs) {
         switch (unit) {
             case Position.BKing:
-                dirs.add(new Coordinate(x, y + 1));
-                dirs.add(new Coordinate(x + 1, y));
-                dirs.add(new Coordinate(x + 1, y + 1 - 1));
-                dirs.add(new Coordinate(x, y - 1));
-                dirs.add(new Coordinate(x - 1, y - 1));
-                dirs.add(new Coordinate(x - 1, y));
-                dirs.add(new Coordinate(x - 1, y + 1));
+            case Position.WKing:
+                addKing(x, y, dirs, myTroops, enemyTroops);
                 break;
             case Position.BKnight:
-                dirs.add(new Coordinate(x + 1, y + 2));
-                dirs.add(new Coordinate(x - 1, y + 2));
-
-                dirs.add(new Coordinate(x + 1, y - 2));
-                dirs.add(new Coordinate(x - 1, y - 2));
-
-                dirs.add(new Coordinate(x + 2, y + 1));
-                dirs.add(new Coordinate(x + 2, y - 1));
-
-                dirs.add(new Coordinate(x - 2, y + 1));
-                dirs.add(new Coordinate(x - 2, y - 1));
+            case Position.WKnight:
+                addKnight(x, y, dirs, myTroops, enemyTroops);
                 break;
             case Position.BPawn:
-                dirs.add(new Coordinate(x + 1, y + 1));
-                dirs.add(new Coordinate(x - 1, y + 1));
+            case Position.WPawn:
+                addPawn(x, y, dirs, myTroops, enemyTroops);
                 break;
             case Position.BQueen:
+            case Position.WQueen:
                 addRook(x, y, dirs, myTroops, enemyTroops);
                 addBishop(x, y, dirs, myTroops, enemyTroops);
                 break;
             case Position.BRook:
+            case Position.WRook:
                 addRook(x, y, dirs, myTroops, enemyTroops);
                 break;
             case Position.BBishop:
+            case Position.WBishop:
                 addBishop(x, y, dirs, myTroops, enemyTroops);
                 break;
         }
+    }
+
+    private static void addPawn(final int x, final int y, final Collection<Coordinate> dirs, final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops) {
+        dirs.add(new Coordinate(x + 1, y + 1));
+        dirs.add(new Coordinate(x - 1, y + 1));
+    }
+
+    private static void addKnight(final int x, final int y, final Collection<Coordinate> dirs, final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops) {
+        dirs.add(new Coordinate(x + 1, y + 2));
+        dirs.add(new Coordinate(x - 1, y + 2));
+
+        dirs.add(new Coordinate(x + 1, y - 2));
+        dirs.add(new Coordinate(x - 1, y - 2));
+
+        dirs.add(new Coordinate(x + 2, y + 1));
+        dirs.add(new Coordinate(x + 2, y - 1));
+
+        dirs.add(new Coordinate(x - 2, y + 1));
+        dirs.add(new Coordinate(x - 2, y - 1));
+    }
+
+    private static void addKing(final int x, final int y, final Collection<Coordinate> dirs, final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops) {
+        dirs.add(new Coordinate(x, y + 1));
+        dirs.add(new Coordinate(x + 1, y));
+        dirs.add(new Coordinate(x + 1, y + 1 - 1));
+        dirs.add(new Coordinate(x, y - 1));
+        dirs.add(new Coordinate(x - 1, y - 1));
+        dirs.add(new Coordinate(x - 1, y));
+        dirs.add(new Coordinate(x - 1, y + 1));
     }
 
     private static void addRook(final int x, final int y, final Collection<Coordinate> dirs, final Map<Coordinate, Integer> myTroops, final Map<Coordinate, Integer> enemyTroops) {
@@ -167,7 +192,7 @@ public final class YourEvaluator extends Evaluator {
         @Override
         public int hashCode() {
             int hash = 5;
-            hash = 89 * hash + this.x;
+            hash = 23 * hash + this.x;
             hash = 89 * hash + this.y;
             return hash;
         }
@@ -181,6 +206,10 @@ public final class YourEvaluator extends Evaluator {
                 return false;
             }
             final Coordinate other = (Coordinate) obj;
+            return equals(other);
+        }
+
+        public boolean equals(final Coordinate other) {
             if (this.x != other.x) {
                 return false;
             }
