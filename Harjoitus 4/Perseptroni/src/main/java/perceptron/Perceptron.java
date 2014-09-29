@@ -28,7 +28,7 @@ public class Perceptron {
         double[] w = new double[28 * 28];
 
         for (int step = 0; step < steps;) {
-            final int example = rand.nextInt(5000);
+            final int example = rand.nextInt(6000);
 
             final Image img = images.get(example);
             final int charClass = img.characterClass;
@@ -38,16 +38,9 @@ public class Perceptron {
             step++;
 
             final double[] vector = img.vec;
-            double z = charClass == 3 ? 1D : -1D;
-            if (z >= 0 && charClass == targetChar) {
-                for (int i = 0; i < w.length; i++) {
-                    w[i] += vector[i];
-                }
-            }
-            if (z < 0 && charClass == oppositeChar) {
-                for (int i = 0; i < w.length; i++) {
-                    w[i] -= vector[i];
-                }
+            final double z = charClass == targetChar ? 1D : -1D;
+            for (int i = 0; i < w.length; i++) {
+                w[i] += z * vector[i];
             }
         }
         return w;
